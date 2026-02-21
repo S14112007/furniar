@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+<script src="./aframe-ar-main/dist/aframe-ar.min.js"></script>
+
+<title>Markerless Chair AR</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f5f5f5;
+  text-align: center;
+}
+header {
+  background: black;
+  color: white;
+  padding: 15px;
+  font-size: 22px;
+  font-weight: bold;
+}
+.section { padding: 10px; }
+.price { font-size: 24px; color: green; font-weight: bold; }
+.old-price { text-decoration: line-through; color: red; }
+.discount {
+  background: red;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 5px;
+  display: inline-block;
+  margin-top: 5px;
+}
+.features {
+  text-align: left;
+  max-width: 400px;
+  margin: auto;
+}
+.ar-container {
+  width: 100%;
+  height: 60vh;
+}
+</style>
+</head>
+
+<body>
+
+<header>AM FURNITURE</header>
+
+<div class="section">
+<h2>Modern Smart Chair</h2>
+<p>Premium Comfort. Experience Before You Buy.</p>
+<p style="color:gold;">★★★★★ (4.8/5 Rated)</p>
+</div>
+
+<div class="section">
+<span class="old-price">₹12,999</span>
+<div class="price">₹8,999</div>
+<div class="discount">30% Limited Offer</div>
+</div>
+
+<div class="section features">
+<h3>Key Features:</h3>
+<ul>
+<li>Ergonomic lumbar support</li>
+<li>Adjustable height</li>
+<li>360° smooth rotation</li>
+<li>Premium breathable cushion</li>
+<li>Modern minimalist finish</li>
+</ul>
+</div>
+
+<div class="ar-container">
+
+<script>
+AFRAME.registerComponent('ar-logic', {
+  tick: function () {
+    const cam = document.querySelector("#cam");
+    const model = document.querySelector("#box");
+    if (!cam || !model) return;
+
+    const intersection = cam.components.raycaster.getIntersection(model);
+    if (!intersection) return;
+
+    const circle = document.querySelector("#circle");
+    circle.setAttribute('position', intersection.point);
+  }
+});
+
+window.addEventListener('touchstart', function () {
+  const model = document.querySelector("#box");
+  const circle = document.querySelector("#circle");
+  const pos = circle.getAttribute('position');
+  model.setAttribute('position', pos);
+});
+</script>
+
+<a-scene
+  ar
+  renderer="logarithmicDepthBuffer: true;"
+  vr-mode-ui="enabled: false"
+>
+
+  <a-camera
+    id="cam"
+    ar-raycaster
+    raycaster="objects: #box;">
+    
+    <a-text id="hud"
+      value="Tap to Place Chair"
+      position="0 -0.2 -0.5"
+      align="center"
+      width="2">
+    </a-text>
+
+  </a-camera>
+
+  <!-- Placement Ring -->
+  <a-ring
+    id="circle"
+    rotation="-90 0 0"
+    radius-inner="0.05"
+    radius-outer="0.07"
+    color="green">
+  </a-ring>
+
+  <!-- 3D Chair Model -->
+  <a-gltf-model
+    id="box"
+    src="model/chair.glb"
+    scale="3 3 3"
+    position="0 0 -2"
+    ar-logic>
+  </a-gltf-model>
+
+</a-scene>
+
+</div>
+
+</body>
+</html>
