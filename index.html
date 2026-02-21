@@ -1,146 +1,104 @@
+
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-<script src="./aframe-ar-main/dist/aframe-ar.min.js"></script>
 
-<title>Markerless Chair AR</title>
+<title>WebXR Markerless Chair</title>
 
 <style>
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: #f5f5f5;
-  text-align: center;
-}
-header {
-  background: black;
-  color: white;
-  padding: 15px;
-  font-size: 22px;
-  font-weight: bold;
-}
-.section { padding: 10px; }
-.price { font-size: 24px; color: green; font-weight: bold; }
-.old-price { text-decoration: line-through; color: red; }
-.discount {
-  background: red;
-  color: white;
-  padding: 5px 10px;
-  border-radius: 5px;
-  display: inline-block;
-  margin-top: 5px;
-}
-.features {
-  text-align: left;
-  max-width: 400px;
-  margin: auto;
-}
-.ar-container {
-  width: 100%;
-  height: 60vh;
-}
+body { margin:0; }
 </style>
 </head>
 
 <body>
 
-<header>AM FURNITURE</header>
-
-<div class="section">
-<h2>Modern Smart Chair</h2>
-<p>Premium Comfort. Experience Before You Buy.</p>
-<p style="color:gold;">★★★★★ (4.8/5 Rated)</p>
-</div>
-
-<div class="section">
-<span class="old-price">₹12,999</span>
-<div class="price">₹8,999</div>
-<div class="discount">30% Limited Offer</div>
-</div>
-
-<div class="section features">
-<h3>Key Features:</h3>
-<ul>
-<li>Ergonomic lumbar support</li>
-<li>Adjustable height</li>
-<li>360° smooth rotation</li>
-<li>Premium breathable cushion</li>
-<li>Modern minimalist finish</li>
-</ul>
-</div>
-
-<div class="ar-container">
-
-<script>
-AFRAME.registerComponent('ar-logic', {
-  tick: function () {
-    const cam = document.querySelector("#cam");
-    const model = document.querySelector("#box");
-    if (!cam || !model) return;
-
-    const intersection = cam.components.raycaster.getIntersection(model);
-    if (!intersection) return;
-
-    const circle = document.querySelector("#circle");
-    circle.setAttribute('position', intersection.point);
-  }
-});
-
-window.addEventListener('touchstart', function () {
-  const model = document.querySelector("#box");
-  const circle = document.querySelector("#circle");
-  const pos = circle.getAttribute('position');
-  model.setAttribute('position', pos);
-});
-</script>
-
 <a-scene
-  ar ar-logic
+  vr-mode-ui="enabled: true"
+  webxr="requiredFeatures: hit-test, local-floor"
   renderer="logarithmicDepthBuffer: true;"
-  vr-mode-ui="enabled: false"
 >
 
-  <a-camera
-    id="cam"
-    ar-raycaster
-    raycaster="objects: #box;">
-    
-    <a-text id="hud"
-      value="Tap to Place Chair"
-      position="0 -0.2 -0.5"
-      align="center"
-      width="2">
-    </a-text>
+  <a-assets>
+    <a-asset-item id="chairModel" src="chair.glb"></a-asset-item>
+  </a-assets>
 
-  </a-camera>
+  <!-- Camera -->
+  <a-camera position="0 1.6 0"></a-camera>
 
-  <!-- Placement Ring -->
+  <!-- Light -->
+  <a-light type="ambient" intensity="1"></a-light>
+  <a-light type="directional" position="1 3 2" intensity="0.5"></a-light>
+
+  <!-- Reticle -->
   <a-ring
-    id="circle"
+    id="reticle"
     rotation="-90 0 0"
     radius-inner="0.05"
     radius-outer="0.07"
-    color="green">
+    color="green"
+    visible="false">
   </a-ring>
 
-  <!-- 3D Chair Model -->
-  <a-gltf-model
-    id="box"
-    src="model/chair.glb"
+  <!-- Chair -->
+  <a-entity
+    id="chair"
+    gltf-model="#chairModel"
     scale="3 3 3"
-    position="0 0 -2"
-    ar-logic>
-  </a-gltf-model>
+    visible="false">
+  </a-entity>
 
 </a-scene>
 
-</div>
+<script>
+AFRAME.registerComponent('hit-test', {
+  init: function () {
+    this.reticle = document.querySelector('#reticle');
+    this.chair = document.querySelector('#chair');
+    this.hitTestSource = null;
+    this.viewerSpace = null;
+
+    this.el.sceneEl.renderer.xr.addEventListener('sessionstart', async () => {
+      const session = this.el.sceneEl.renderer.xr.getSession();
+      const viewerSpace = await session.requestReferenceSpace('viewer');
+      this.viewerSpace = viewerSpace;
+      this.hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
+    });
+
+    this.el.sceneEl.addEventListener('click', () => {
+      if (this.reticle.object3D.visible) {
+        this.chair.object3D.position.copy(this.reticle.object3D.position);
+        this.chair.setAttribute('visible', true);
+      }
+    });
+  },
+
+  tick: function () {
+    const frame = this.el.sceneEl.frame;
+    if (!frame || !this.hitTestSource) return;
+
+    const referenceSpace = this.el.sceneEl.renderer.xr.getReferenceSpace();
+    const hits = frame.getHitTestResults(this.hitTestSource);
+
+    if (hits.length > 0) {
+      const pose = hits[0].getPose(referenceSpace);
+      this.reticle.setAttribute('visible', true);
+      this.reticle.object3D.position.set(
+        pose.transform.position.x,
+        pose.transform.position.y,
+        pose.transform.position.z
+      );
+    } else {
+      this.reticle.setAttribute('visible', false);
+    }
+  }
+});
+
+document.querySelector('a-scene').setAttribute('hit-test', '');
+</script>
 
 </body>
-
 </html>
-
